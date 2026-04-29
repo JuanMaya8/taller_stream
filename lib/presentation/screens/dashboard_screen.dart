@@ -1,7 +1,9 @@
 // TODO: DashboardScreen
 import 'package:flutter/material.dart';
 import '../../domain/usecases/monitor_vitals_use_case.dart';
+import 'history_screen.dart';
 import '../widgets/alert_banner_widget.dart';
+import '../widgets/app_menu_drawer.dart';
 import '../widgets/blood_pressure_widget.dart';
 import '../widgets/heart_rate_widget.dart';
 import '../widgets/temperature_widget.dart';
@@ -32,6 +34,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.grey.shade100,
+      drawer: AppMenuDrawer(
+        selectedDestination: AppMenuDestination.monitor,
+        onMonitorTap: () => Navigator.of(context).pop(),
+        onHistoryTap: () {
+          Navigator.of(context).pop();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => HistoryScreen(useCase: widget.useCase),
+            ),
+          );
+        },
+      ),
       appBar: AppBar(
         title: const Text('Vital Signs Monitor'),
         backgroundColor: Colors.white,

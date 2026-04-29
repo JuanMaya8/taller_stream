@@ -1,7 +1,6 @@
 // TODO: TemperatureIsolate
 import 'dart:async';
 import 'dart:isolate';
-import 'dart:math';
 import '../../domain/entities/vital_sign.dart';
 
 class TemperatureIsolate {
@@ -40,12 +39,36 @@ class TemperatureIsolate {
   }
 
   static void _isolateEntryPoint(SendPort sendPort) async {
-    final random = Random();
+    const readings = <double>[
+      36.4,
+      36.6,
+      36.8,
+      37.0,
+      37.1,
+      37.3,
+      37.8,
+      38.2,
+      37.6,
+      37.0,
+      36.7,
+      36.2,
+      35.9,
+      36.1,
+      36.5,
+      36.9,
+      37.4,
+      38.0,
+      37.2,
+      36.6,
+    ];
+
+    var index = 0;
     final timer = Timer.periodic(const Duration(seconds: 4), (_) {
-      final value = 35.0 + random.nextDouble() * 4.5;
+      final value = readings[index];
+      index = (index + 1) % readings.length;
 
       sendPort.send({
-        'value': double.parse(value.toStringAsFixed(2)),
+        'value': value,
         'timestamp': DateTime.now().toIso8601String(),
       });
     });

@@ -9,6 +9,9 @@ abstract class MonitorVitalsUseCase {
   Stream<VitalSign> watchHeartRate();
   Stream<VitalSign> watchBloodPressure();
   Stream<VitalSign> watchTemperature();
+  Stream<List<VitalSign>> watchHeartRateHistory();
+  Stream<List<VitalSign>> watchBloodPressureHistory();
+  Stream<List<VitalSign>> watchTemperatureHistory();
   Stream<Alert> watchAlerts();
   Future<void> start();
   Future<void> stop();
@@ -32,6 +35,18 @@ class MonitorVitalsUseCaseImpl implements MonitorVitalsUseCase {
       _repository.temperatureStream;
 
   @override
+  Stream<List<VitalSign>> watchHeartRateHistory() =>
+      _historyFrom(_repository.heartRateStream);
+
+  @override
+  Stream<List<VitalSign>> watchBloodPressureHistory() =>
+      _historyFrom(_repository.bloodPressureStream);
+
+  @override
+  Stream<List<VitalSign>> watchTemperatureHistory() =>
+      _historyFrom(_repository.temperatureStream);
+
+  @override
   Stream<Alert> watchAlerts() {
     // Combina los 3 streams y emite alertas cuando un valor es anormal
     final streams = [
@@ -51,6 +66,16 @@ class MonitorVitalsUseCaseImpl implements MonitorVitalsUseCase {
               ),
             ))
         .reduce((a, b) => a.mergeWith([b]));
+  }
+
+  Stream<List<VitalSign>> _historyFrom(
+    Stream<VitalSign> stream, {
+    int maxItems = 12,
+  }) {
+    return stream.scan<List<VitalSign>>(
+      (history, vital, _) => [vital, ...history].take(maxItems).toList(),
+      <VitalSign>[],
+    );
   }
 
   AlertSeverity _resolveSeverity(VitalSign v) {

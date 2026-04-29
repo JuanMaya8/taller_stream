@@ -37,6 +37,8 @@ Actualmente el dashboard muestra:
 - Tarjeta de `Heart Rate`.
 - Tarjeta de `Blood Pressure`.
 - Tarjeta de `Temperature`.
+- Menú lateral deslizable para navegar entre Monitor e Historial.
+- Pantalla de historial por sensor accesible desde el menú.
 
 Los tres sensores se ejecutan internamente y los tres tienen representación visual en el dashboard.
 
@@ -87,9 +89,11 @@ lib/
 │       └── sensor_repository_impl.dart
 └── presentation/
     ├── screens/
-    │   └── dashboard_screen.dart
+    │   ├── dashboard_screen.dart
+    │   └── history_screen.dart
     └── widgets/
         ├── alert_banner_widget.dart
+        ├── app_menu_drawer.dart
         ├── blood_pressure_widget.dart
         ├── heart_rate_widget.dart
         ├── temperature_widget.dart
@@ -124,15 +128,47 @@ temperatureStream
         -> AlertBannerWidget
 ```
 
+Para el historial:
+
+```text
+Stream<VitalSign>
+  -> scan() de RxDart
+    -> List<VitalSign> con las últimas lecturas
+      -> HistoryScreen
+```
+
 ## Sensores Simulados
 
-| Sensor | Archivo | Intervalo | Rango simulado | Unidad |
+| Sensor | Archivo | Intervalo | Lecturas predefinidas | Unidad |
 |---|---|---:|---:|---|
-| Frecuencia cardiaca | `heart_rate_isolate.dart` | 2 segundos | 55 - 115 | bpm |
-| Presión arterial | `blood_pressure_isolate.dart` | 3 segundos | 60 - 140 | mmHg |
-| Temperatura | `temperature_isolate.dart` | 4 segundos | 35.0 - 39.5 | °C |
+| Frecuencia cardiaca | `heart_rate_isolate.dart` | 2 segundos | 20 lecturas ciclicas | bpm |
+| Presión arterial | `blood_pressure_isolate.dart` | 3 segundos | 20 lecturas ciclicas | mmHg |
+| Temperatura | `temperature_isolate.dart` | 4 segundos | 20 lecturas ciclicas | °C |
 
-Cada sensor genera datos con `Timer.periodic` dentro de su propio isolate.
+Cada sensor reproduce una secuencia fija de 20 lecturas con `Timer.periodic` dentro de su propio isolate. Al llegar a la última lectura, la secuencia vuelve a empezar. Esto evita datos aleatorios y permite una demostración repetible del flujo de streams.
+
+### Lecturas Predefinidas
+
+Frecuencia cardiaca (`bpm`):
+
+```text
+72, 76, 81, 88, 94, 101, 98, 86, 79, 64,
+58, 62, 69, 75, 83, 91, 106, 99, 87, 73
+```
+
+Presión arterial (`mmHg`):
+
+```text
+118, 122, 116, 110, 104, 96, 88, 74, 68, 72,
+84, 93, 105, 117, 126, 134, 128, 119, 112, 100
+```
+
+Temperatura (`°C`):
+
+```text
+36.4, 36.6, 36.8, 37.0, 37.1, 37.3, 37.8, 38.2, 37.6, 37.0,
+36.7, 36.2, 35.9, 36.1, 36.5, 36.9, 37.4, 38.0, 37.2, 36.6
+```
 
 ## Rangos Normales
 
@@ -176,12 +212,15 @@ Expone los métodos que consume la UI:
 Stream<VitalSign> watchHeartRate();
 Stream<VitalSign> watchBloodPressure();
 Stream<VitalSign> watchTemperature();
+Stream<List<VitalSign>> watchHeartRateHistory();
+Stream<List<VitalSign>> watchBloodPressureHistory();
+Stream<List<VitalSign>> watchTemperatureHistory();
 Stream<Alert> watchAlerts();
 Future<void> start();
 Future<void> stop();
 ```
 
-Además combina los streams de signos vitales para producir alertas usando RxDart.
+Además combina los streams de signos vitales para producir alertas usando RxDart y acumula historiales con `scan()`.
 
 ### `DashboardScreen`
 
@@ -191,6 +230,19 @@ Es un `StatefulWidget` porque controla el ciclo de vida del monitoreo:
 - En `dispose()` llama `useCase.stop()`.
 
 Esto evita que los isolates sigan corriendo cuando la pantalla se destruye.
+
+### `HistoryScreen`
+
+Muestra una segunda pantalla con tabs para consultar las últimas lecturas de cada sensor.
+
+La pantalla consume streams de listas (`Stream<List<VitalSign>>`) generados desde el caso de uso. No guarda estado global ni usa un gestor externo; el historial nace como transformación del stream original.
+
+### `AppMenuDrawer`
+
+Es el menú lateral compartido entre pantallas. Permite navegar entre:
+
+- `Monitor`: pantalla principal con las tarjetas en tiempo real.
+- `Historial`: pantalla con las últimas lecturas por sensor.
 
 ## Requisitos
 
@@ -267,7 +319,7 @@ flutter pub get
 ## Qué Debes Tener en Cuenta
 
 - Los sensores son simulados; no se usa hardware médico real.
-- Los datos se generan de forma aleatoria para provocar estados normales y alertas.
+- Los datos no son aleatorios; cada sensor reproduce una lista fija de 20 lecturas y la repite en ciclo.
 - Los isolates no pueden compartir memoria directamente con el hilo principal.
 - La comunicación entre isolates se hace con mensajes serializables mediante `SendPort`.
 - El `StreamController` principal es broadcast porque más de un widget puede escuchar el mismo flujo.
@@ -278,7 +330,6 @@ flutter pub get
 
 ## Mejoras Pendientes
 
-- Agregar historial por sensor usando un buffer `List<VitalSign>` acumulado con `scan()` de RxDart.
 - Agregar un indicador online/offline por sensor.
 - Mostrar gráficas históricas para visualizar tendencias.
 - Simular errores de desconexión de sensores para demostrar recuperación.
